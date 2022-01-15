@@ -30,8 +30,9 @@ trial_lists <- map_dfr(list.files(), read_csv)
 # rename files -------------------------------------------------------------
 setwd("../../../hw2")
 trial_lists %>% 
-  arrange(speaker, trial) %>% 
+  arrange(trial, speaker) %>% 
   mutate(typicality = ifelse(is.na(typicality), "", typicality),
+         trial = ifelse(nchar(trial) == 1, str_c("0", trial), as.character(trial)),
          new_names = str_c(speaker, "_", trial, "_", condition, "_", typicality, 
                            "_", colour_en, "_", object_en)) %>% 
   pull(new_names) %>% 
@@ -51,4 +52,6 @@ trial_lists %>%
   select(speaker, trial, colour_en, object_en, trial_number) ->
   for_viewer
 
-create_viewer(audio_dir = "audio", table = for_viewer)
+create_viewer(audio_dir = "audio", table = for_viewer, output_dir = getwd(), 
+              output_file = "index")
+beepr::beep()
