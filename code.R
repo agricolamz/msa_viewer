@@ -1,57 +1,31 @@
-setwd("/home/agricolamz/work/articles/2022_reproducibility_german/hw2")
 library(tidyverse)
 library(phonfieldwork)
 
-# extract audio chunks -----------------------------------------------------
-dir.create("audio")
-
-txtgrids <- list.files("../osfstorage-archive/production/audio", 
-                       pattern = ".TextGrid", full.names = TRUE)
-
-audio <- list.files("../osfstorage-archive/production/audio", 
-                       pattern = ".wav", full.names = TRUE)
-
-names <- list.files("../osfstorage-archive/production/audio", 
-                    pattern = ".wav")
-names <- str_c(str_remove_all(names, ".wav"), "_")
-
-lapply(seq_along(audio), function(i){
-  extract_intervals(file_name = normalizePath(audio[i]),
-                    textgrid = normalizePath(txtgrids[i]),
-                    prefix = names[i],
-                    tier = 4,
-                    path = "audio")  
-})
-
-# merge all trial_lists ----------------------------------------------------
-setwd("../osfstorage-archive/production/trial-lists")
-trial_lists <- map_dfr(list.files(), read_csv)
-
-# rename files -------------------------------------------------------------
-setwd("../../../hw2")
-trial_lists %>% 
-  arrange(trial, speaker) %>% 
-  mutate(typicality = ifelse(is.na(typicality), "", typicality),
-         trial = ifelse(nchar(trial) == 1, str_c("0", trial), as.character(trial)),
-         new_names = str_c(speaker, "_", trial, "_", condition, "_", typicality, 
-                           "_", colour_en, "_", object_en)) %>% 
-  pull(new_names) %>% 
-  rename_soundfiles(path = "audio", backup = FALSE, autonumbering = FALSE, 
-                    logging = FALSE)
-
-# remove files -------------------------------------------------------------
-file.remove(list.files("audio", pattern = "_AF_", full.names = TRUE))
-file.remove(list.files("audio", pattern = "_ANF_", full.names = TRUE))
-
 # create_viewer ------------------------------------------------------------
+setwd("/home/agricolamz/work/articles/2022_reproducibility_german/osfstorage-archive/production/trial-lists")
+trial_lists <- map_dfr(list.files(), read_csv)
+setwd("../../../hw3")
+
+
 trial_lists %>% 
   filter(condition == "NF") %>% 
   arrange(speaker, trial) %>% 
   group_by(speaker, colour_en, object_en) %>% 
   mutate(trial_number = 1:n()) %>% 
-  select(speaker, trial, colour_en, object_en, trial_number) ->
+  mutate(researcher = case_when(colour_en == "yellow" ~ "Anya",
+                                colour_en == "orange" ~ "Garik",
+                                colour_en == "red" ~ "Margaux",
+                                colour_en == "green" ~ "Sasha",
+                                colour_en == "brown" & speaker %in% c("LG", "MS", "IP", "JB", "PS", "PB", "CG") ~ "Anya",
+                                colour_en == "brown" & speaker %in% c("KM", "IB", "EM", "HA", "JW_3", "TS", "CT", "IS") ~ "Garik",
+                                colour_en == "brown" & speaker %in% c("JN", "CO", "AL", "MZ", "HW", "CH", "JR", "VS") ~ "Margaux",
+                                colour_en == "brown" & speaker %in% c("AS", "HS", "JH", "JK", "JW_2", "LM", "TB") ~ "Sasha")) %>% 
+  select(researcher, speaker, trial, colour_en, object_en, trial_number) ->
   for_viewer
+
+write_csv(for_viewer, "hw3_form.csv")
 
 create_viewer(audio_dir = "audio", table = for_viewer, output_dir = getwd(), 
               output_file = "index")
+
 beepr::beep()
